@@ -2,12 +2,13 @@ package main
 
 import (
 	"bufio"
+	"bytes"
+	"fmt"
 	"github.com/gnanakeethan/print/escpos"
-	"io/ioutil"
+	"io"
 	"log"
 	"net/http"
 	"os"
-	"os/exec"
 	"strconv"
 	"strings"
 	"syscall"
@@ -34,8 +35,6 @@ func main() {
 }
 
 func handler(wr http.ResponseWriter, r *http.Request) {
-	os.Remove("output")
-
 	//get variables of post
 	print := r.FormValue("print")
 	machine := r.FormValue("machine")
@@ -43,31 +42,15 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	barcode := r.FormValue("barcode")
 	code_format := r.FormValue("code_format")
 	print = strings.Replace(print, "\\n", "\n", -1)
+	fmt.Printf("%+v\n", r.Form)
 
 	log.Println(barcode)
 	log.Println(code_format)
 	log.Println(print)
-	//print command
-	b := "copy output \\\\" + machine + "\\" + printer
-	ioutil.WriteFile("run.cmd", []byte(b), 0644)
-	cmd := exec.Command("run.cmd")
-	defer cmd.Run()
 
-	path := "output"
-	// detect if file exists
-	var _, err = os.Stat(path)
-	if os.IsNotExist(err) {
-		// create file if not exists
-		var file, _ = os.Create(path)
-		defer file.Close()
-	}
-
-	f, err := os.OpenFile("output", O_WRONLY, 0644)
+	printmachine := "\\\\" + machine + "\\" + printer
+	f := bytes.NewBuffer([]byte(""))
 	w := bufio.NewWriter(f)
-	if err != nil {
-		panic(err)
-	}
-	defer f.Close()
 
 	p := escpos.New(w)
 	p.Init()
@@ -79,11 +62,39 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 		intformat, _ := strconv.Atoi(code_format)
 		p.PrintBarcode(barcode, intformat)
 	}
-	if print != "" {
-		p.Write(print)
+	textmap := make(map[string]string)
+	for key, values := range r.Form { // range over map
+		for _, value := range values { // range over []string
+			textmap[key] = value
+			fmt.Println(key, value)
+		}
 	}
-
+	fmt.Printf("%+v\n", textmap)
+	if print != "" {
+		p.Text(textmap, print)
+		//	p.Write(print)
+	}
 	p.End()
-
 	w.Flush()
+
+	log.Print(f)
+	copyFileContents(f, printmachine)
+}
+
+func copyFileContents(in io.Reader, dst string) (err error) {
+	out, err := os.Create(dst)
+	if err != nil {
+		return
+	}
+	defer func() {
+		cerr := out.Close()
+		if err == nil {
+			err = cerr
+		}
+	}()
+	if _, err = io.Copy(out, in); err != nil {
+		return
+	}
+	err = out.Sync()
+	return
 }
