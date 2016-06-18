@@ -1,0 +1,1 @@
+copy output \\KEETHAN\POS-58C
