@@ -3,7 +3,6 @@ package main
 import (
 	"bufio"
 	"bytes"
-	"fmt"
 	"github.com/gnanakeethan/print/escpos"
 	"io"
 	"log"
@@ -35,6 +34,8 @@ func main() {
 }
 
 func handler(wr http.ResponseWriter, r *http.Request) {
+
+	wr.Header().Add("Access-Control-Allow-Origin", "*")
 	//get variables of post
 	print := r.FormValue("print")
 	machine := r.FormValue("machine")
@@ -42,10 +43,7 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	barcode := r.FormValue("barcode")
 	code_format := r.FormValue("code_format")
 	print = strings.Replace(print, "\\n", "\n", -1)
-	fmt.Printf("%+v\n", r.Form)
 
-	log.Println(barcode)
-	log.Println(code_format)
 	log.Println(print)
 
 	printmachine := "\\\\" + machine + "\\" + printer
@@ -66,18 +64,14 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	for key, values := range r.Form { // range over map
 		for _, value := range values { // range over []string
 			textmap[key] = value
-			fmt.Println(key, value)
 		}
 	}
-	fmt.Printf("%+v\n", textmap)
 	if print != "" {
 		p.Text(textmap, print)
-		//	p.Write(print)
 	}
 	p.End()
 	w.Flush()
 
-	log.Print(f)
 	copyFileContents(f, printmachine)
 }
 
