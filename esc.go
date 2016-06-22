@@ -8,20 +8,9 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
-)
-
-const (
-	O_RDONLY int = syscall.O_RDONLY // open the file read-only.
-	O_WRONLY int = syscall.O_WRONLY // open the file write-only.
-	O_RDWR   int = syscall.O_RDWR   // open the file read-write.
-	O_APPEND int = syscall.O_APPEND // append data to the file when writing.
-	O_CREATE int = syscall.O_CREAT  // create a new file if none exists.
-	O_EXCL   int = syscall.O_EXCL   // used with O_CREATE, file must not exist
-	O_SYNC   int = syscall.O_SYNC   // open for synchronous I/O.
-	O_TRUNC  int = syscall.O_TRUNC  // if possible, truncate file when opened.
 )
 
 func main() {
@@ -36,17 +25,22 @@ func main() {
 func handler(wr http.ResponseWriter, r *http.Request) {
 
 	wr.Header().Add("Access-Control-Allow-Origin", "*")
-	//get variables of post
+
 	print := r.FormValue("print")
 	machine := r.FormValue("machine")
 	printer := r.FormValue("printer")
 	barcode := r.FormValue("barcode")
 	code_format := r.FormValue("code_format")
-	print = strings.Replace(print, "\\n", "\n", -1)
 
-	log.Println(print)
+	ostype := runtime.GOOS
+	printmachine := "testfile"
+	switch ostype {
+	case "windows":
+		printmachine = "\\\\" + machine + "\\" + printer
+	case "linux":
+		printmachine = "/dev/" + printer
+	}
 
-	printmachine := "\\\\" + machine + "\\" + printer
 	f := bytes.NewBuffer([]byte(""))
 	w := bufio.NewWriter(f)
 
@@ -54,7 +48,7 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	p.Init()
 	if barcode != "" {
 		if code_format == "" {
-			code_format = "1"
+			code_format = "2"
 		}
 		barcode = strings.ToUpper(barcode)
 		intformat, _ := strconv.Atoi(code_format)
