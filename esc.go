@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
@@ -30,8 +31,10 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	machine := r.FormValue("machine")
 	printer := r.FormValue("printer")
 	barcode := r.FormValue("barcode")
+	image := r.FormValue("image")
 	code_format := r.FormValue("code_format")
 
+	log.Println(image)
 	ostype := runtime.GOOS
 	printmachine := "testfile"
 	switch ostype {
@@ -62,6 +65,12 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	}
 	if print != "" {
 		p.Text(textmap, print)
+	} else if image != "" {
+		downloadFile("download.png", "http://localhost:8000"+image)
+		cmd := exec.Command("convert", "download.png", "-resize", "500x500", "downloadr.png")
+		cmd.Run()
+		printcmd := exec.Command("png2pos -c -p downloadr.png >> " + printmachine)
+		printcmd.Run()
 	}
 	p.End()
 	w.Flush()
@@ -85,4 +94,28 @@ func copyFileContents(in io.Reader, dst string) (err error) {
 	}
 	err = out.Sync()
 	return
+}
+
+func downloadFile(filepath string, url string) (err error) {
+
+	// Create the file
+	out, err := os.Create(filepath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+	// Get the data
+	resp, err := http.Get(url)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	// Writer the body to file
+	_, err = io.Copy(out, resp.Body)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
