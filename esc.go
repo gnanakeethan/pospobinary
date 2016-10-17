@@ -66,7 +66,7 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	if print != "" {
 		p.Text(textmap, print)
 	} else if image != "" {
-		downloadFile("download.png", "http://localhost:8000"+image)
+		downloadFile("download.png", "https://bmc.joomtriggers.com"+image)
 		cmd := exec.Command("convert", "download.png", "-resize", "500x500", "downloadr.png")
 		cmd.Run()
 		printcmd := exec.Command("png2pos -c -p downloadr.png >> " + printmachine)
