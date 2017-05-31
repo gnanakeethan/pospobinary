@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"fmt"
 	"github.com/gnanakeethan/print/escpos"
 	"io"
 	"log"
@@ -17,7 +18,7 @@ import (
 func main() {
 	http.HandleFunc("/", handler)
 
-	err := http.ListenAndServeTLS(":8080", "server.pem", "server.key", nil)
+	err := http.ListenAndServeTLS(":8080", "localhost.pem", "localhost.key", nil)
 	if err != nil {
 		log.Fatal("ListenAndServe: ", err)
 	}
@@ -75,7 +76,17 @@ func handler(wr http.ResponseWriter, r *http.Request) {
 	p.End()
 	w.Flush()
 
-	copyFileContents(f, printmachine)
+	switch ostype {
+	case "windows":
+		copyFileContents(f, printmachine)
+	case "linux":
+		copyFileContents(f, printmachine)
+	case "darwin":
+		copyFileContents(f, "output")
+		printmachine = "printdd"
+		v, _ := exec.Command("/bin/bash", printmachine).Output()
+		fmt.Print(v)
+	}
 }
 
 func copyFileContents(in io.Reader, dst string) (err error) {
